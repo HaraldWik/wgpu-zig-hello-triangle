@@ -5,36 +5,57 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib_mod = b.createModule(.{
+    const c_mod = b.addTranslateC(.{
+        .root_source_file = b.addWriteFiles().add("c.h",
+            \\#if defined(_WIN32) || defined(_WIN64)
+            \\#define GLFW_EXPOSE_NATIVE_WIN32
+            \\#elif defined(__APPLE__) || defined(__MACH__)
+            \\#define GLFW_EXPOSE_NATIVE_COCOA
+            \\#elif defined(__linux__) || defined(__unix)
+            \\#define GLFW_EXPOSE_NATIVE_WAYLAND
+            \\#define GLFW_EXPOSE_NATIVE_X11
+            \\#endif
+            \\
+            \\#include <GLFW/glfw3.h>
+            \\#include <GLFW/glfw3native.h>
+        ),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    }).createModule();
+    c_mod.linkSystemLibrary("glfw", .{});
+
+    const wgpu_mod = b.dependency("wgpu_native_zig", .{}).module("wgpu");
+
+    const mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{ .name = "c", .module = c_mod },
+            .{ .name = "wgpu", .module = wgpu_mod },
+        },
     });
+    mod.linkSystemLibrary("SDL3_image", .{});
 
-    lib_mod.linkSystemLibrary("glfw", .{ .needed = true });
-    lib_mod.linkSystemLibrary("GL", .{ .needed = true }); // or OpenGL on mac
-    lib_mod.linkSystemLibrary("X11", .{ .needed = true }); // for Linux, if GLFW needs it
+    // mod.linkSystemLibrary("glfw", .{});
+    // mod.linkSystemLibrary("GL", .{}); // or OpenGL on mac
+    mod.linkSystemLibrary("X11", .{}); // for Linux, if GLFW needs it
 
-    const zglfw = b.dependency("zglfw", .{});
-    lib_mod.addImport("zglfw", zglfw.module("root"));
-    if (target.result.os.tag != .emscripten) lib_mod.linkLibrary(zglfw.artifact("glfw"));
-    lib_mod.linkSystemLibrary("X11", .{ .needed = true });
-
-    const wgpu_native_dep = b.dependency("wgpu_native_zig", .{});
-    lib_mod.addImport("wgpu", wgpu_native_dep.module("wgpu"));
-
-    lib_mod.linkSystemLibrary("SDL3_image", .{ .needed = true });
+    mod.linkSystemLibrary("SDL3_image", .{});
 
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{ .name = "c", .module = c_mod },
+            .{ .name = "engine_lib", .module = mod },
+        },
     });
 
-    exe_mod.addImport("engine_lib", lib_mod);
-
     const exe = b.addExecutable(.{
-        .name = "engine",
+        .name = "wgpu_zig_hello_triangle",
         .root_module = exe_mod,
     });
 
@@ -48,7 +69,7 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
     const lib_unit_tests = b.addTest(.{
-        .root_module = lib_mod,
+        .root_module = mod,
     });
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);

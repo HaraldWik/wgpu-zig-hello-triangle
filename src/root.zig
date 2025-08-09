@@ -1,43 +1,37 @@
 const std = @import("std");
-const glfw = @import("zglfw");
-
-const c = @cImport({
-    @cInclude("GL/gl.h");
-});
+const c = @import("c");
 
 pub const gpu = @import("gpu.zig");
-pub const Obj = @import("obj.zig");
+pub const Obj = @import("Obj.zig");
 
 pub const App = struct {
     const Self = @This();
 
-    window: *glfw.Window,
+    window: *c.GLFWwindow,
 
     pub fn init(title: [:0]const u8, width: u32, height: u32) !Self {
-        try glfw.init();
+        if (c.glfwInit() != 0) return error.GlfwInit;
 
-        glfw.windowHint(.client_api, .no_api);
-        glfw.windowHint(.resizable, true);
+        c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
+        c.glfwWindowHint(c.GLFW_RESIZABLE, c.GLFW_TRUE);
 
-        const window = try glfw.Window.create(@intCast(width), @intCast(height), title, null);
-
-        // try glfw.setInputMode(window, .cursor, .disabled);
+        const window = c.glfwCreateWindow(@intCast(width), @intCast(height), title, null, null) orelse return error.GlfwCreateWindow;
 
         return .{ .window = window };
     }
 
     pub fn deinit(self: Self) void {
-        self.window.destroy();
-        glfw.terminate();
+        c.glfwDestroyWindow(self.window);
+        c.glfwTerminate();
     }
 
     pub fn update(self: Self) bool {
-        if (glfw.windowShouldClose(self.window)) return true;
-        glfw.pollEvents();
+        if (c.glfwWindowShouldClose(self.window) == 1) return true;
+        c.glfwPollEvents();
 
-        c.glClear(c.GL_COLOR_BUFFER_BIT);
-        c.glClearColor(0.1, 0.4, 0.6, 1.0);
-        glfw.swapBuffers(self.window);
+        // c.glClear(c.GL_COLOR_BUFFER_BIT);
+        // c.glClearColor(0.1, 0.4, 0.6, 1.0);
+        c.glfwSwapBuffers(self.window);
 
         return false;
     }

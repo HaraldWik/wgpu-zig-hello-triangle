@@ -3,6 +3,8 @@ const eng = @import("engine_lib");
 const gpu = @import("engine_lib").gpu;
 
 pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
     const app = try eng.App.init("title: [:0]const u8", 800, 640);
     defer app.deinit();
 
@@ -12,8 +14,8 @@ pub fn main() !void {
     const pipeline = try gpu.Pipeline.init(context, @embedFile("shader.wgsl"));
     defer pipeline.deinit();
 
-    const obj = try eng.Obj.init(std.heap.page_allocator, "assets/models/basket.obj");
-    defer obj.deinit();
+    const obj = try eng.Obj.init(allocator, "assets/models/basket.obj");
+    defer obj.deinit(allocator);
 
     const model = try eng.gpu.Model.init(context, obj.vertices, obj.indices);
     defer model.deinit();

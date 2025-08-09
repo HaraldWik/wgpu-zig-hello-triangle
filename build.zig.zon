@@ -1,25 +1,18 @@
 .{
-    .name = .engine,
-    .version = "0.0.0",
-    .fingerprint = 0xe8a81a8de5c1a2ad,
-    .minimum_zig_version = "0.15.0-dev.631+9a3540d61",
+    .name = .wgpu_zig_hello_triangle,
+    .version = "0.15.0-dev.1380+e98aeeb73",
+    .fingerprint = 0xcf777e9dfe0fccc9,
     .dependencies = .{
-        .zglfw = .{
-            .url = "git+https://github.com/zig-gamedev/zglfw#c337cb3d3f984468ea7a386335937a5d555fc024",
-            .hash = "zglfw-0.10.0-dev-zgVDNMacIQA-k7kNSfwUc9Lfzx-bb_wklVm25K-p8Tr7",
-        },
         .wgpu_native_zig = .{
-            .url = "git+https://github.com/bronter/wgpu_native_zig#4b6b7d132f1e55d5e9aea4d411facdc429da9b22",
-            .hash = "wgpu_native_zig-6.2.0-B9jeDMszAwDC_kDLa9gZMZp1NNQ6VE7blZ7OEcBUXycW",
+            .url = "git+https://github.com/bronter/wgpu_native_zig#ed408d55240160b6fea9a51e317dc40851b48102",
+            .hash = "wgpu_native_zig-6.5.0-B9jeDFtzAwB1vPOiXTd2BqrP1j4phYk-oBbxbpLKY3xD",
         },
     },
-
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        // For example...
-        //"LICENSE",
-        //"README.md",
+        "LICENSE",
+        "README.md",
     },
 }

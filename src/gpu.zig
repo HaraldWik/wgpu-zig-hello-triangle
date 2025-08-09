@@ -1,8 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const App = @import("root.zig").App;
-const glfw = @import("zglfw");
 pub const wgpu = @import("wgpu");
+const c = @import("c");
 
 pub const Context = struct {
     const Self = @This();
@@ -19,25 +19,25 @@ pub const Context = struct {
         const surface_descriptor: wgpu.SurfaceDescriptor = switch (builtin.os.tag) {
             .windows => wgpu.surfaceDescriptorFromWindowsHWND(wgpu.MergedSurfaceDescriptorFromWindowsHWND{
                 .label = "win32_surface_descriptor",
-                .hinstance = glfw.getWin32Window(app.window),
-                .hwnd = glfw.getWin32Window(app.window),
+                .hinstance = c.glfwGetWin32Window(app.window),
+                .hwnd = c.glfwGetWin32Window(app.window),
             }),
             .linux, .freebsd, .openbsd, .dragonfly => blk: {
-                const wayland_display = glfw.getWaylandDisplay();
+                const wayland_display = c.glfwGetWaylandDisplay();
                 if (wayland_display != null) {
                     break :blk wgpu.surfaceDescriptorFromWaylandSurface(wgpu.MergedSurfaceDescriptorFromWaylandSurface{
                         .label = "wayland_surface_descriptor",
                         .display = @ptrCast(wayland_display),
-                        .surface = @ptrCast(glfw.getWaylandWindow(app.window)),
+                        .surface = @ptrCast(c.glfwGetWaylandWindow(app.window)),
                     });
                 }
 
-                const x11_display = glfw.getX11Display();
+                const x11_display = c.glfwGetX11Display();
                 if (x11_display != null) {
                     break :blk wgpu.surfaceDescriptorFromXlibWindow(wgpu.MergedSurfaceDescriptorFromXlibWindow{
                         .label = "x11_surface_descriptor",
                         .display = @ptrCast(x11_display),
-                        .window = @intCast(glfw.getX11Window(app.window)),
+                        .window = @intCast(c.glfwGetX11Window(app.window)),
                     });
                 }
 
@@ -45,7 +45,7 @@ pub const Context = struct {
             },
             .macos => wgpu.surfaceDescriptorFromMetalLayer(wgpu.MergedSurfaceDescriptorFromMetalLayer{
                 .label = "metal_surface_descriptor",
-                .layer = glfw.getCocoaWindow(app.window),
+                .layer = c.glfwGetCocoaWindow(app.window),
             }),
             else => @panic("Unsupported platform for WebGPU-based context"),
         };
@@ -68,11 +68,15 @@ pub const Context = struct {
 
         const queue = device.getQueue() orelse return error.GetQueue;
 
+        var width: c_int = undefined;
+        var height: c_int = undefined;
+        c.glfwGetWindowSize(app.window, &width, &height);
+
         const config = wgpu.SurfaceConfiguration{
             .device = device,
             .format = .rgba8_unorm_srgb,
-            .width = @intCast(app.window.getSize()[0]),
-            .height = @intCast(app.window.getSize()[1]),
+            .width = @intCast(width),
+            .height = @intCast(height),
             .present_mode = wgpu.PresentMode.fifo, // V-sync
             .alpha_mode = wgpu.CompositeAlphaMode.auto,
             .view_formats = &[_]wgpu.TextureFormat{},
@@ -307,10 +311,6 @@ pub const Model = struct {
     }
 };
 
-const c = @cImport({
-    @cInclude("SDL3_image/SDL_image.h");
-});
-
 pub const Texture = struct {
     const Self = @This();
 
@@ -319,7 +319,8 @@ pub const Texture = struct {
     sampler: *wgpu.Sampler,
 
     pub fn init(context: Context, path: [:0]const u8) !Self {
-        const image: *c.SDL_Surface = @ptrCast(c.IMG_Load(path) orelse return error.ImageLoad);
+        const sdl = @cImport(@cInclude("SDL3_image/SDL_image.h")); // TODO: Remove c import
+        const image: *sdl.SDL_Surface = @ptrCast(sdl.IMG_Load(path) orelse return error.ImageLoad);
 
         const width: u32 = @intCast(image.w);
         const height: u32 = @intCast(image.h);
